@@ -1,6 +1,6 @@
 # การตรวจระบบ AppNong Khai Trip_Hybrid_Mobile
 
-ตรวจรอบล่าสุด 25 กันยายน 2026: TypeScript (รวม unused imports), Prettier, tests 8 ชุด และ Metro export iOS/Android ผ่าน ตรวจ Expo config ได้ชื่อใหม่และลิงก์ไฟล์ในเอกสารไม่มีรายการเสีย ผลนี้ไม่แทนการทดสอบบนมือถือจริง
+ตรวจรอบล่าสุด 30 กันยายน 2026: TypeScript, Prettier, tests 8 ชุด, Expo Doctor 21/21 checks และ Metro export สำหรับ iOS/Android ผ่าน ผลเหล่านี้ไม่แทนการทดสอบบนมือถือจริง
 
 ## ขอบเขตการตรวจ
 
@@ -9,7 +9,19 @@
 - Expo config ต้องใช้ชื่อใหม่และอ้างอิง assets ที่มีอยู่
 - Metro export iOS/Android ตรวจ JavaScript/assets ไม่ใช่ native build
 - ยังต้องทดสอบมือถือจริง กล้อง คลังภาพ SQLite offline และ notification
+- ยังต้องเก็บ Profiler trace และ Accessibility audit ตาม Week 12
 - ยังไม่ได้ยืนยัน clean clone/install/run และ native build ของรุ่นนี้
+
+## สถานะ Week 12
+
+| รายการตรวจ                                    | สถานะ                                                            |
+| --------------------------------------------- | ---------------------------------------------------------------- |
+| โครงสร้าง Screens/Components/Context/Services | มีในโค้ดและอธิบายใน `ARCHITECTURE.md`                            |
+| Source of truth และ Data flow                 | ระบุเจ้าของข้อมูลสถานที่ บัญชี ทริป cache และข้อมูลฝั่ง API แล้ว |
+| FlatList, cache และการลดขนาดภาพ               | มีในโค้ด                                                         |
+| React Profiler ก่อน–หลัง                      | รอทดสอบบน Development/Release-like build                         |
+| VoiceOver/TalkBack และตัวอักษร 200%           | รอทดสอบบนมือถือจริง                                              |
+| Accessibility fixes อย่างน้อย 5 จุด           | รอบันทึกปัญหาและหลักฐานก่อน–หลัง                                 |
 
 ## แบบบันทึก
 
@@ -41,7 +53,8 @@
 | ลบทริปจากแจ้งเตือน/ID ไม่ถูกต้อง          | แสดงไม่พบ ไม่ crash                                           | รอทดสอบ |
 | ลบทริป                                    | ขอคำยืนยัน ลบ API/cache/รูปค้าง และยกเลิก reminder            | รอทดสอบ |
 | Logout                                    | หน้าทริปไม่แสดงข้อมูลบัญชีเดิม                                | รอทดสอบ |
-| จอเล็ก/ใหญ่ ตัวอักษร 150%                 | อ่านและกดได้ เมนูลอยไม่บังปุ่มสุดท้าย                         | รอทดสอบ |
+| จอเล็ก/ใหญ่ ตัวอักษร 200%                 | อ่านและกดได้ เมนูลอยไม่บังปุ่มสุดท้าย                         | รอทดสอบ |
+| VoiceOver หรือ TalkBack                   | Flow หลักอ่านชื่อ บทบาท และสถานะปุ่มได้ตามลำดับ               | รอทดสอบ |
 
 ## คำสั่ง
 

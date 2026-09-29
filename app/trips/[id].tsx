@@ -1,5 +1,15 @@
 import { useEffect, useRef, useState } from 'react';
-import { Alert, Modal, Pressable, ScrollView, Text, View } from 'react-native';
+import {
+  Alert,
+  FlatList,
+  Image,
+  Modal,
+  Pressable,
+  ScrollView,
+  Text,
+  View,
+  useWindowDimensions,
+} from 'react-native';
 import { Redirect, Stack, router, useLocalSearchParams } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '../../src/context/AuthContext';
@@ -38,6 +48,15 @@ export default function TripDetail() {
   const [selectedDay, setSelectedDay] = useState(requestedDay || '');
   const [picker, setPicker] = useState(false);
   const [album, setAlbum] = useState(false);
+  const [selectedMemoryId, setSelectedMemoryId] = useState<string | null>(null);
+  const { width } = useWindowDimensions();
+  const albumColumns = width >= 700 ? 4 : 3;
+  const selectedMemory = trip?.memories.find((memory) => memory.id === selectedMemoryId);
+  function closeAlbum() {
+    if (busy) return;
+    setSelectedMemoryId(null);
+    setAlbum(false);
+  }
   const [mapVisible, setMapVisible] = useState(false);
   useEffect(() => {
     void hasReminder(id)
@@ -476,79 +495,174 @@ export default function TripDetail() {
           </View>
         </SafeAreaView>
       </Modal>
-      <Modal visible={album} animationType="slide" onRequestClose={() => setAlbum(false)}>
+      <Modal
+        visible={album}
+        animationType="slide"
+        onRequestClose={() => {
+          if (busy) return;
+          if (selectedMemory) setSelectedMemoryId(null);
+          else closeAlbum();
+        }}
+      >
         <SafeAreaView style={ui.page}>
-          <ScrollView contentContainerStyle={ui.content}>
-            <View style={[ui.row, { justifyContent: 'space-between' }]}>
-              <Text style={ui.heading}>ภาพความทรงจำ</Text>
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel="ปิดคลังรูป"
-                onPress={() => setAlbum(false)}
-                style={{ padding: 12 }}
-              >
-                <Ionicons name="close" size={24} color={colors.text} />
-              </Pressable>
-            </View>
-            <View style={ui.row}>
-              <View style={{ flex: 1 }}>
-                <Button
-                  title="ถ่ายรูป"
-                  icon="camera-outline"
+          {selectedMemory ? (
+            <View style={{ flex: 1 }}>
+              <View style={[ui.row, { paddingHorizontal: 16, justifyContent: 'space-between' }]}>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="กลับคลังภาพของทริป"
                   disabled={busy}
-                  onPress={() => {
-                    memoryId.current = newId();
-                    setCamera({});
-                  }}
-                />
-              </View>
-              <View style={{ flex: 1 }}>
-                <Button
-                  secondary
-                  title="เพิ่มจากคลัง"
-                  icon="images-outline"
+                  onPress={() => setSelectedMemoryId(null)}
+                  style={{ padding: 14 }}
+                >
+                  <Ionicons name="arrow-back" size={24} color={colors.text} />
+                </Pressable>
+                <Text style={[ui.heading, { flex: 1 }]} numberOfLines={1}>
+                  {trip.title}
+                </Text>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="ปิดคลังรูป"
                   disabled={busy}
-                  onPress={() =>
-                    void action(async () => {
-                      const uri = await selectMemoryPhoto();
-                      if (uri) {
-                        memoryId.current = newId();
-                        setCamera({ uri });
-                      }
-                    })
-                  }
-                />
+                  onPress={closeAlbum}
+                  style={{ padding: 14 }}
+                >
+                  <Ionicons name="close" size={24} color={colors.text} />
+                </Pressable>
               </View>
-            </View>
-            {!trip.memories.length && (
-              <EmptyState
-                icon="images-outline"
-                title="เก็บภาพแรกของทริปนี้"
-                description="เปิดกล้องหรือเลือกภาพจากคลัง เพื่อเก็บความทรงจำไว้ด้วยกัน"
+              <Image
+                source={{ uri: selectedMemory.imageUrl }}
+                resizeMode="contain"
+                accessibilityLabel={'ภาพในทริป ' + trip.title}
+                style={{ flex: 1, width: '100%', backgroundColor: colors.dark }}
               />
-            )}
-            {trip.memories.map((memory) => (
-              <View key={memory.id} style={ui.card}>
-                <PlaceImage uri={memory.imageUrl} style={{ height: 260, borderRadius: 20 }} />
+              <View style={{ padding: 20, gap: 12 }}>
                 <Text style={ui.muted}>
-                  {formatDate(memory.createdAt)}
-                  {pendingIds.includes(memory.id) ? ' · อยู่ในเครื่อง รอส่ง' : ' · บันทึกแล้ว'}
+                  {formatDate(selectedMemory.createdAt)}
+                  {pendingIds.includes(selectedMemory.id) ? ' · อยู่ในเครื่อง รอส่ง' : ''}
                 </Text>
                 <Button
-                  secondary
-                  title="บันทึกลงคลังภาพมือถือ"
+                  title="บันทึกภาพนี้ลงเครื่อง"
                   icon="download-outline"
-                  disabled={busy}
+                  loading={busy}
                   onPress={() =>
                     void action(async () => {
-                      await saveMemoryToGallery(memory.imageUrl);
-                      Alert.alert('บันทึกแล้ว', 'รูปอยู่ในคลังภาพของมือถือแล้ว');
+                      await saveMemoryToGallery(selectedMemory.imageUrl);
+                      Alert.alert('บันทึกแล้ว', 'รูปที่เลือกอยู่ในคลังภาพของมือถือแล้ว');
                     })
                   }
                 />
               </View>
-            ))}
-          </ScrollView>
+            </View>
+          ) : (
+            <FlatList
+              key={albumColumns}
+              data={trip.memories}
+              numColumns={albumColumns}
+              keyExtractor={(memory) => memory.id}
+              extraData={pendingIds}
+              contentContainerStyle={{
+                padding: 16,
+                paddingBottom: 32,
+                maxWidth: 1000,
+                width: '100%',
+                alignSelf: 'center',
+              }}
+              ListHeaderComponent={
+                <View style={{ gap: 14, marginBottom: 18 }}>
+                  <View style={[ui.row, { justifyContent: 'space-between' }]}>
+                    <View style={{ flex: 1, gap: 4 }}>
+                      <Text style={ui.heading}>ภาพในทริป</Text>
+                      <Text style={ui.muted}>
+                        {trip.title} · {trip.memories.length} รูป
+                      </Text>
+                    </View>
+                    <Pressable
+                      accessibilityRole="button"
+                      accessibilityLabel="ปิดคลังรูป"
+                      onPress={closeAlbum}
+                      disabled={busy}
+                      style={{ padding: 14 }}
+                    >
+                      <Ionicons name="close" size={24} color={colors.text} />
+                    </Pressable>
+                  </View>
+                  <View style={ui.row}>
+                    <View style={{ flex: 1 }}>
+                      <Button
+                        title="ถ่ายรูป"
+                        icon="camera-outline"
+                        disabled={busy}
+                        onPress={() => {
+                          memoryId.current = newId();
+                          setCamera({});
+                        }}
+                      />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Button
+                        secondary
+                        title="เพิ่มจากคลัง"
+                        icon="images-outline"
+                        disabled={busy}
+                        onPress={() =>
+                          void action(async () => {
+                            const uri = await selectMemoryPhoto();
+                            if (uri) {
+                              memoryId.current = newId();
+                              setCamera({ uri });
+                            }
+                          })
+                        }
+                      />
+                    </View>
+                  </View>
+
+                  <Text style={ui.muted}>แตะรูปเพื่อดูเต็มภาพและบันทึกลงเครื่อง</Text>
+                </View>
+              }
+              renderItem={({ item: memory, index }) => (
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={'ดูรูปที่ ' + (index + 1) + ' ของทริป ' + trip.title}
+                  accessibilityHint="เปิดภาพขนาดใหญ่พร้อมปุ่มบันทึกลงเครื่อง"
+                  onPress={() => setSelectedMemoryId(memory.id)}
+                  style={({ pressed }) => ({
+                    width: `${100 / albumColumns}%` as const,
+                    padding: 4,
+                    opacity: pressed ? 0.7 : 1,
+                  })}
+                >
+                  <PlaceImage
+                    uri={memory.imageUrl}
+                    style={{ aspectRatio: 1, width: '100%', borderRadius: 16 }}
+                  />
+                  {pendingIds.includes(memory.id) && (
+                    <View
+                      style={{
+                        position: 'absolute',
+                        bottom: 10,
+                        left: 10,
+                        backgroundColor: colors.white,
+                        borderRadius: 8,
+                        paddingHorizontal: 6,
+                        paddingVertical: 3,
+                      }}
+                    >
+                      <Text style={{ fontSize: 11, color: colors.text }}>รอส่ง</Text>
+                    </View>
+                  )}
+                </Pressable>
+              )}
+              ListEmptyComponent={
+                <EmptyState
+                  icon="images-outline"
+                  title="เก็บภาพแรกของทริปนี้"
+                  description="เปิดกล้องหรือเลือกภาพจากคลัง เพื่อเก็บความทรงจำไว้ด้วยกัน"
+                />
+              }
+            />
+          )}
           {album && cameraView}
         </SafeAreaView>
       </Modal>
